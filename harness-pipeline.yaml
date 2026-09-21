@@ -4,6 +4,12 @@ pipeline:
   projectIdentifier: Azure_Terraform_Demo
   orgIdentifier: default
   tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: GitHubwTerraform_Connector
+        repoName: tf_harnes_azure_pip
+        build: <+input>
   stages:
     - stage:
         name: Terraform Plan
@@ -21,7 +27,7 @@ pipeline:
             steps:
               - step:
                   type: Run
-                  name: Terraform Init & Plan
+                  name: Terraform Init and Plan
                   identifier: Terraform_Init_Plan
                   spec:
                     connectorRef: account.harnessImage
@@ -49,7 +55,8 @@ pipeline:
                     approvers:
                       userGroups:
                         - account.projectAdmins
-                    approvalsNeeded: 1
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
     - stage:
         name: Terraform Apply
         identifier: Terraform_Apply
