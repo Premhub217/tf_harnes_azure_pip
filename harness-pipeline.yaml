@@ -1,0 +1,77 @@
+pipeline:
+  name: Azure Terraform Pipeline
+  identifier: Azure_Terraform_Pipeline
+  projectIdentifier: Azure_Terraform_Demo
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Terraform Plan
+        identifier: Terraform_Plan
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.harnessImage
+              namespace: harness-delegate-ng
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Terraform Init & Plan
+                  identifier: Terraform_Init_Plan
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: hashicorp/terraform:latest
+                    shell: Sh
+                    command: |-
+                      terraform init
+                      terraform plan -out=tfplan
+    - stage:
+        name: Approval Stage
+        identifier: Approval_Stage
+        description: ""
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Approve Apply
+                  identifier: Approve_Apply
+                  type: HarnessApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: Please review the plan output before approving the Terraform Apply execution.
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - account.projectAdmins
+                    approvalsNeeded: 1
+    - stage:
+        name: Terraform Apply
+        identifier: Terraform_Apply
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.harnessImage
+              namespace: harness-delegate-ng
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Terraform Apply
+                  identifier: Terraform_Apply_Step
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: hashicorp/terraform:latest
+                    shell: Sh
+                    command: |-
+                      terraform init
+                      terraform apply -auto-approve tfplan
