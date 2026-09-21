@@ -1,84 +1,67 @@
 pipeline:
-  name: Azure Terraform Pipeline
-  identifier: Azure_Terraform_Pipeline
+  name: Azure-Terraform-Pipeline
+  identifier: AzureTerraformPipeline
   projectIdentifier: Azure_Terraform_Demo
   orgIdentifier: default
-  tags: {}
+
   properties:
     ci:
       codebase:
         connectorRef: GitHubwTerraform_Connector
         repoName: tf_harnes_azure_pip
-        build: <+input>
+        build:
+          type: branch
+          spec:
+            branch: main
+
   stages:
     - stage:
-        name: Terraform Plan
-        identifier: Terraform_Plan
-        description: ""
-        type: CI
+        name: Terraform
+        identifier: Terraform
+        type: Custom
         spec:
-          cloneCodebase: true
-          infrastructure:
-            type: KubernetesDirect
-            spec:
-              connectorRef: account.harnessImage
-              namespace: harness-delegate-ng
           execution:
             steps:
+
               - step:
-                  type: Run
-                  name: Terraform Init and Plan
-                  identifier: Terraform_Init_Plan
+                  type: TerraformPlan
+                  name: Terraform_Plan
+                  identifier: Terraform_Plan
                   spec:
-                    connectorRef: account.harnessImage
-                    image: hashicorp/terraform:latest
-                    shell: Sh
-                    command: |-
-                      terraform init
-                      terraform plan -out=tfplan
-    - stage:
-        name: Approval Stage
-        identifier: Approval_Stage
-        description: ""
-        type: Approval
-        spec:
-          execution:
-            steps:
+                    provisionerIdentifier: azure_terraform
+                    configuration:
+                      command: apply
+                      configFiles:
+                        store:
+                          type: Github
+                          spec:
+                            connectorRef: GitHubwTerraform_Connector
+                            repoName: tf_harnes_azure_pip
+                            gitFetchType: Branch
+                            branch: main
+                            folderPath: /
+                      providerCredential:
+                        type: Azure
+                        spec:
+                          connectorRef: Azure_Terraform_Connector
+                          subscriptionId: e539ab70-9167-4979-b61b-c9eab7622d18
+
               - step:
-                  name: Approve Apply
-                  identifier: Approve_Apply
                   type: HarnessApproval
-                  timeout: 1d
+                  name: Terraform_Approval
+                  identifier: Terraform_Approval
                   spec:
-                    approvalMessage: Please review the plan output before approving the Terraform Apply execution.
-                    includePipelineExecutionHistory: true
                     approvers:
                       userGroups:
-                        - account.projectAdmins
+                        - <YOUR_USER_GROUP_IDENTIFIER>
                       minimumCount: 1
                       disallowPipelineExecutor: false
-    - stage:
-        name: Terraform Apply
-        identifier: Terraform_Apply
-        description: ""
-        type: CI
-        spec:
-          cloneCodebase: true
-          infrastructure:
-            type: KubernetesDirect
-            spec:
-              connectorRef: account.harnessImage
-              namespace: harness-delegate-ng
-          execution:
-            steps:
+
               - step:
-                  type: Run
-                  name: Terraform Apply
-                  identifier: Terraform_Apply_Step
+                  type: TerraformApply
+                  name: Terraform_Apply
+                  identifier: Terraform_Apply
                   spec:
-                    connectorRef: account.harnessImage
-                    image: hashicorp/terraform:latest
-                    shell: Sh
-                    command: |-
-                      terraform init
-                      terraform apply -auto-approve tfplan
+                    provisionerIdentifier: azure_terraform
+                    configuration:
+                      type: InheritFromPlan
